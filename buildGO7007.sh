@@ -79,12 +79,16 @@
 #  │   Depends on: MEDIA_SUPPORT [=m] && VIDEO_V4L2 [=m] && I2C [=y]                                                                                          │  
 #  │   Selected by [n]:                                                                                                                                       │  
 #  │   - VIDEO_GO7007 [=n] && MEDIA_SUPPORT [=m] && MEDIA_USB_SUPPORT [=y] && MEDIA_ANALOG_TV_SUPPORT [=y] && VIDEO_DEV [=m] && I2C [=y] && SND [=m] && USB [ │  
-make -j 4 M=drivers/media/usb/go7007
+START_DIR=$(pwd)
+RPMBUILD_HOME=$(pwd)/rpmbuild
+cd $RPMBUILD_HOME/BUILD/kernel-*/linux-*/
+
+make --jobs=auto M=drivers/media/usb/go7007
 find . -type f -name "go7007*.ko"
 #make -j 4 M=drivers/media/i2c/tw9906 causes *** You are building kernel with non-retpoline compiler, please update your compiler..
 #see: https://askubuntu.com/questions/1145943/building-kernel-with-non-retpoline-compiler
 #Run make menuconfig. Navigate to Processor type and features, and uncheck Avoid speculative indirect branches in kernel.
-make -j 4 M=drivers/media/i2c  #/tw9906
+make --jobs=auto M=drivers/media/i2c  #/tw9906
 find . -type f -name "tw9906*.ko"
 
 DRIVERS_ROOT=/lib/modules/`uname -r`/kernel
@@ -99,16 +103,34 @@ TW9906DIR=${DRIVERS_ROOT}/drivers/media/i2c
 if [ ! -d ${TW9906DIR} ]; then sudo mkdir -p ${TW9906DIR}; fi
 sudo cp -v $(find . -name "tw9906.ko") ${TW9906DIR}
 
+cd $START_DIR
 sudo depmod -a # Initialize dependencies
-sudo modprobe tw9906
-sudo modprobe go7007
-sudo modprobe go7007-usb
-sudo modprobe go7007-loader
-modprobe -D go7007
 
-sudo setenforce 0
+#https://askubuntu.com/questions/14627/no-symbol-version-for-module-layout-when-trying-to-load-usbhid-ko
+MODPOPT=
+MOD_VERS=$(find . -name Module.symvers)
+if [ "${#MOD_VERS}" == "0" ]; then
+  # Module.symvers not found
+  # NOTE: "modules_prepare" will not build Module.symvers even if
+  # CONFIG_MODVERSIONS is set; therefore, a full kernel build needs to be
+  # executed to make module versioning work.
+  MODPOPT="--force";#  -f, --force  Force module insertion or removal. Implies --force-modversions and --force-vermagic
+fi
+## VIDEO_TW9906 [=n] │ Prompt: Techwell TW9906 video decoder  
+# Location:  -> Device Drivers 
+#                -> Multimedia support (MEDIA_SUPPORT [=m]) 
+#                   -> I2C Encoders, decoders, sensors and other helper chips  
+sudo modprobe $MODPOPT tw9906 
+sudo modprobe $MODPOPT go7007
+sudo modprobe $MODPOPT go7007-usb
+sudo modprobe $MODPOPT go7007-loader
+modprobe -D go7007           # print module dependencies
+
+#sudo setenforce 0
 # put the usb in
-sudo setenforce 1
+#sudo setenforce 1
+
+dmesg | grep video
 
 # | modprobe -D go7007
 # | insmod /lib/modules/4.18.0-240.1.1.el8_3.x86_64/kernel/drivers/media/v4l2-core/videodev.ko.xz 

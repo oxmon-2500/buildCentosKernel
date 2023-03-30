@@ -18,20 +18,53 @@ if [ ! -d ${RPMBUILD_HOME} ]; then
 fi
 
 CENTOS_KERNEL=$(uname -r)
-CENTOS_RPM=kernel-${CENTOS_KERNEL/x86_64/src.rpm}; # 4.18.0-240.1.1.el8_3.x86_64 --> 4.18.0-240.1.1.el8_3.rpm
-if [ ! -f  ${CENTOS_RPM} ]; then
-    # wget https://vault.centos.org/8.3.2011/BaseOS/Source/SPackages/kernel-4.18.0-240.1.1.el8_3.src.rpm
-    wget https://vault.centos.org/$(cat /etc/centos-release | awk '{printf "%s", $4}')/BaseOS/Source/SPackages/${CENTOS_RPM}
-fi
+CENTOS_RPM=kernel-${CENTOS_KERNEL/x86_64/src.rpm}; # 4.18.0-240.1.1.el8_3.x86_64 --> 4.18.0-240.1.1.el8_3.src.rpm
 
+function downloadRpm(){
+  # cat /etc/centos-release
+  #   CentOS Stream release 8
+  #   CentOS Linux release 8.5.2111
+  CENTOS_RELEASE=$(cat /etc/centos-release)
+  if [[ "$CENTOS_RELEASE" =~ CentOS[[:space:]](.+)[[:space:]]release[[:space:]]([0-9.]+) ]]; then
+     RELEASE_STR=${BASH_REMATCH[1]}; # Stream | Linux
+     RELEASE_NO=${BASH_REMATCH[2]};  # 8      | 8.5.2111
+     if [ "$RELEASE_STR" == "Stream" ]; then
+       RELEASE_NO=${RELEASE_NO}-stream; #8-stream for url
+     fi
+  fi
+  if [ ! -f  ${CENTOS_RPM} ]; then
+      # wget https://vault.centos.org/8.3.2011/BaseOS/Source/SPackages/kernel-4.18.0-240.1.1.el8_3.src.rpm
+      echo "-------------------------------------------------------------------------"
+      echo "wget https://vault.centos.org/$RELEASE_NO/BaseOS/Source/SPackages/${CENTOS_RPM}"
+      echo "-------------------------------------------------------------------------"
+      wget https://vault.centos.org/$RELEASE_NO/BaseOS/Source/SPackages/${CENTOS_RPM}
+  fi
+}
 
-if [ ! -f ${CENTOS_RPM}/SPECS/kernel.spec ]; then
+echo "--------------------downloadRpm"
+downloadRpm
+
+function rpmInstall(){
+  if [ ! -f ${RPMBUILD_HOME}/SPECS/kernel.spec ]; then
     if [ ! -f ~/.rpmmacros ]; then
         echo "%_topdir $RPMBUILD_HOME" > ~/.rpmmacros # the following rpm -- install will be redirected
     fi
+    DO_DEL=0
+    cat /etc/passwd | grep mockbuild
+    if [ "$?" != "0" ]; then
+      sudo useradd -s /sbin/nologin mockbuild
+      DO_DEL=1
+    fi
     rpm --install ${CENTOS_RPM} # uses %_topdir from ~/.rpmmacros
+    if [ "$DO_DEL" == "1" ]; then
+      sudo userdel mockbuild
+    fi
     #rm ~/.rpmmacros
-fi
+  fi
+}
+
+echo "--------------------rpmInstall"
+rpmInstall
 
 function dnfInstall(){ #https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/31/Everything/x86_64/os/Packages/l/libdwarves1-1.15-3.fc31.x86_64.rpm
     local RPM_FILE=$(basename $1)
@@ -90,20 +123,39 @@ function preRequisites2(){
     fi
 }
 
+echo "--------------------preRequisites2"
 preRequisites2
 
 cd $RPMBUILD_HOME/SPECS # contains kernel.spec
+echo "--------------------rpmbuild -bp --target=$(uname -m) kernel.spec"
 rpmbuild -bp --target=$(uname -m) kernel.spec # build through %prep (unpack sources and apply patches) from <specfile>
 if [ "$?" != "0" ]; then
+    echo "--------------------------------------------error in rpmbuild"
     exit 1
 fi
 
+#./rpmbuild/SOURCES/kernel-x86_64-debug.config:CONFIG_MEDIA_SUBDRV_AUTOSELECT=y
+#./rpmbuild/SOURCES/kernel-x86_64.config:CONFIG_MEDIA_SUBDRV_AUTOSELECT=y
+#./rpmbuild/BUILD/kernel-4.18.0-448.el8/linux-4.18.0-448.el8.x86_64/drivers/media/Kconfig:
+  #
+  # Ancillary drivers (tuners, i2c, spi, frontends)
+  #
+  #config MEDIA_SUBDRV_AUTOSELECT
+  #      bool "Autoselect ancillary drivers (tuners, sensors, i2c, spi, frontends)"
+  #      depends on MEDIA_ANALOG_TV_SUPPORT || MEDIA_DIGITAL_TV_SUPPORT || MEDIA_CAMERA_SUPPORT || MEDIA_SDR_SUPPORT
+# drivers/media/i2c/Kconfig:
+#menu "I2C Encoders, decoders, sensors and other helper chips"
+#        visible if !MEDIA_SUBDRV_AUTOSELECT || COMPILE_TEST
+
+
 cd $RPMBUILD_HOME/BUILD/kernel-*/linux-*/
-make oldconfig # using defaults found in /boot/config-4.18.0-240.1.1.el8_3.x86_64, configuration written to .config
+make --jobs=auto oldconfig # using defaults found in /boot/config-4.18.0-240.1.1.el8_3.x86_64, configuration written to .config
 make menuconfig #interactive
 make prepare
 make modules_prepare
 make modules     # generates Module.symvers, otherwise: WARNING: Symbol version dump ./Module.symvers is missing; modules will have no dependencies and modversions.
+find . -name Module.symvers
 echo "------------------------------------------------"
 echo "now call buildMyDriver.sh"
+echo " i.e.: ./buildGO7007.sh"
 echo "------------------------------------------------"
