@@ -1,6 +1,17 @@
 #!/bin/bash
 # see https://medium.com/@alexanderyegorov_67403/how-to-compile-kernel-module-for-centos8-78287e9d145a
 
+set -eE
+set -u  # turn on strict variable checking
+# debugging
+#set -x  # trace all function calls
+
+function failure() { local lineno=$1;  local msg=$2
+  echo "Failed at $lineno: $msg"
+}
+trap 'failure ${LINENO} "$BASH_COMMAND"' ERR ;#  trap [-lp] [[arg] sigspec ...], sigspec: ERR,EXIT,RETURN,DEBUG
+
+
 DNF=dnf
 function yum_or_dnf(){
     which yum && DNF=yum

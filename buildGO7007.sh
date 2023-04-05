@@ -79,6 +79,18 @@
 #  │   Depends on: MEDIA_SUPPORT [=m] && VIDEO_V4L2 [=m] && I2C [=y]                                                                                          │  
 #  │   Selected by [n]:                                                                                                                                       │  
 #  │   - VIDEO_GO7007 [=n] && MEDIA_SUPPORT [=m] && MEDIA_USB_SUPPORT [=y] && MEDIA_ANALOG_TV_SUPPORT [=y] && VIDEO_DEV [=m] && I2C [=y] && SND [=m] && USB [ │  
+set -eE
+set -u  # turn on strict variable checking
+# debugging
+#set -x  # trace all function calls
+
+function failure() { local lineno=$1;  local msg=$2
+  echo "Failed at $lineno: $msg"
+}
+trap 'failure ${LINENO} "$BASH_COMMAND"' ERR ;#  trap [-lp] [[arg] sigspec ...], sigspec: ERR,EXIT,RETURN,DEBUG
+
+
+
 START_DIR=$(pwd)
 RPMBUILD_HOME=$(pwd)/rpmbuild
 cd $RPMBUILD_HOME/BUILD/kernel-*/linux-*/
