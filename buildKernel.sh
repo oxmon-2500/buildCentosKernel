@@ -1,11 +1,17 @@
 #!/bin/bash
 # see https://medium.com/@alexanderyegorov_67403/how-to-compile-kernel-module-for-centos8-78287e9d145a
 
+DNF=dnf
+function yum_or_dnf(){
+    which yum && DNF=yum
+}
+yum_or_dnf
+
 function preRequisites(){
     echo "uses sudo:"
-    sudo dnf -y groupinstall "Development Tools"
-    sudo dnf -y install ncurses-devel
-    sudo dnf -y install hmaccalc zlib-devel binutils-devel elfutils-libelf-devel
+    sudo $DNF -y groupinstall "Development Tools"
+    sudo $DNF -y install ncurses-devel
+    sudo $DNF -y install hmaccalc zlib-devel binutils-devel elfutils-libelf-devel
 }
 
 preRequisites
@@ -17,8 +23,8 @@ if [ ! -d ${RPMBUILD_HOME} ]; then
     mkdir -p ${RPMBUILD_HOME}/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 fi
 
+#CENTOS_RPM=kernel-${CENTOS_KERNEL/x86_64/src.rpm}; # 4.18.0-240.1.1.el8_3.x86_64 --> 4.18.0-240.1.1.el8_3.src.rpm
 CENTOS_KERNEL=$(uname -r)
-CENTOS_RPM=kernel-${CENTOS_KERNEL/x86_64/src.rpm}; # 4.18.0-240.1.1.el8_3.x86_64 --> 4.18.0-240.1.1.el8_3.src.rpm
 
 function downloadRpm(){
   # cat /etc/centos-release
@@ -37,7 +43,10 @@ function downloadRpm(){
       echo "-------------------------------------------------------------------------"
       echo "wget https://vault.centos.org/$RELEASE_NO/BaseOS/Source/SPackages/${CENTOS_RPM}"
       echo "-------------------------------------------------------------------------"
-      wget https://vault.centos.org/$RELEASE_NO/BaseOS/Source/SPackages/${CENTOS_RPM}
+      wget -q --spider https://vault.centos.org/$RELEASE_NO/BaseOS/Source/SPackages/${CENTOS_RPM}
+      if [ "$?" != "0" ]; then
+        wget https://vault.centos.org/$RELEASE_NO/os/Source/SPackages/${CENTOS_RPM}
+      fi
   fi
 }
 
@@ -69,7 +78,7 @@ rpmInstall
 function dnfInstall(){ #https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/31/Everything/x86_64/os/Packages/l/libdwarves1-1.15-3.fc31.x86_64.rpm
     local RPM_FILE=$(basename $1)
     wget $1 
-    sudo dnf -y install ${RPM_FILE}
+    sudo $DNF -y install ${RPM_FILE}
     rm ${RPM_FILE}
 }
 # more software needs to be installed
@@ -97,7 +106,7 @@ function preRequisites2(){
     PKG_LIST=`rpmbuild -bp --target=$(uname -m) kernel.spec 2>&1 | grep "is needed by" | awk '{print $1}' | tr '\n' ' '`
     for pkg in $PKG_LIST ; do
         echo "----------------sudo dnf -y install $pkg----------------"
-        sudo dnf -y install $pkg
+        sudo $DNF -y install $pkg
         if [ "$?" != "0" ]; then
             ERR_LIST=(${ERR_LIST[*]} $pkg)
         fi
