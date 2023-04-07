@@ -22,7 +22,7 @@ IND="."; # indent
 function accessMirror(){
     #local REGEX_HREF=".+href[^\>]+\>([^\<]+)\<" not working
     #wget -q $1 -O $WORK_FILE1
-    readarray -t lines < <(wget -qO- $1 | grep -e "^<tr")
+    readarray -t lines < <(wget -qO- $1 | grep -e "^ *<tr")
     for line in "${lines[@]}"; do
       #echo "$line"
       #  test line='<tr class="d"><td class="n"><a href="5.1/">5.1</a>'
