@@ -95,7 +95,7 @@ START_DIR=$(pwd)
 RPMBUILD_HOME=$(pwd)/rpmbuild
 cd $RPMBUILD_HOME/BUILD/kernel-*/linux-*/
 
-make --jobs=auto M=drivers/media/usb/go7007
+make M=drivers/media/usb/go7007
 find . -type f -name "go7007*.ko"
 #make -j 4 M=drivers/media/i2c/tw9906 causes *** You are building kernel with non-retpoline compiler, please update your compiler..
 #see: https://askubuntu.com/questions/1145943/building-kernel-with-non-retpoline-compiler

@@ -237,7 +237,7 @@ cd $RPMBUILD_HOME/BUILD/kernel-*/linux-*/
 make oldconfig # using defaults found in /boot/config-4.18.0-240.1.1.el8_3.x86_64, configuration written to .config
 if [ -f .config ]; then cp .config .config.bak; fi
 make menuconfig #interactive
-meld .config .config.bak
+diff .config .config.bak
 make prepare
 make modules_prepare
 make modules     # generates Module.symvers, otherwise: WARNING: Symbol version dump ./Module.symvers is missing; modules will have no dependencies and modversions.
