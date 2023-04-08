@@ -175,6 +175,8 @@ function preRequisites2(){
     #	pciutils-devel is needed by kernel-4.18.0-240.1.1.el8.x86_64
     #	python3-devel is needed by kernel-4.18.0-240.1.1.el8.x86_64
     #	xmlto is needed by kernel-4.18.0-240.1.1.el8.x86_64
+    echo "using sudo..."
+    sudo $DNF -y install wget
     cd $RPMBUILD_HOME/SPECS # contains kernel.spec
     ERR_LIST=()
     PKG_LIST=`rpmbuild -bp --target=$(uname -m) kernel.spec 2>&1 | grep "is needed by" | awk '{print $1}' | tr '\n' ' '`
