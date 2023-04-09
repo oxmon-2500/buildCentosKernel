@@ -1,5 +1,7 @@
 #!/bin/bash
-# see https://medium.com/@alexanderyegorov_67403/how-to-compile-kernel-module-for-centos8-78287e9d145a
+# links:
+#    https://wiki.centos.org/HowTos/BuildingKernelModules
+#    https://medium.com/@alexanderyegorov_67403/how-to-compile-kernel-module-for-centos8-78287e9d145a
 
 set -eE
 set -u  # turn on strict variable checking
